@@ -16,21 +16,29 @@
             <input type="date" id="date" name="date" required>
 
             <label for="shift">Shift:</label>
-            <select id="shift" name="shift" required>
-                <option value="">Select Shift</option>
-                <option value="Morning">Morning</option>
-                <option value="Evening">Evening</option>
-                <option value="Night">Night</option>
-            </select>
+            <div id="shiftRadios" style="display: flex; gap: 12px; margin-bottom: 8px;">
+                <label><input type="radio" name="shift" value="Morning" required> Morning</label>
+                <label><input type="radio" name="shift" value="Evening"> Evening</label>
+                <label><input type="radio" name="shift" value="Night"> Night</label>
+            </div>
             <div style="font-size:0.95em;color:#555;margin-bottom:8px;">
                 Morning: 6AM, Evening: 2PM, Night: 10PM<br>
                 First shift per day: 2300, additional shifts: 225/hour (8 hours per shift)
             </div>
 
             <label for="workstation">Workstation:</label>
-            <select id="workstation" name="workstation" required>
-                <option value="">Select Workstation</option>
-            </select>
+            <div id="workstationRadios" style="display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px;">
+                <label><input type="radio" name="workstation" value="1" required> 1</label>
+                <label><input type="radio" name="workstation" value="2"> 2</label>
+                <label><input type="radio" name="workstation" value="3"> 3</label>
+                <label><input type="radio" name="workstation" value="4"> 4</label>
+                <label><input type="radio" name="workstation" value="5"> 5</label>
+                <label><input type="radio" name="workstation" value="6"> 6</label>
+                <label><input type="radio" name="workstation" value="7"> 7</label>
+                <label><input type="radio" name="workstation" value="8"> 8</label>
+                <label><input type="radio" name="workstation" value="9"> 9</label>
+                <label><input type="radio" name="workstation" value="10"> 10</label>
+            </div>
 
             <label for="extraStartTime">Extra Hours Start Time (optional):</label>
             <input type="time" id="extraStartTime" name="extraStartTime" step="60">

@@ -129,8 +129,8 @@ function loadShiftHistory() {
         editBtn.className = 'shift-btn';
         editBtn.onclick = function() {
             document.getElementById('date').value = entry.date;
-            document.getElementById('shift').value = entry.shift;
-            document.getElementById('workstation').value = entry.workstation;
+            setShiftValue(entry.shift);
+            setWorkstationValue(entry.workstation);
             document.getElementById('extraStartTime').value = entry.extraStartTime || '';
             document.getElementById('extraStopTime').value = entry.extraStopTime || '';
             document.getElementById('extraHours').value = entry.extraHours || '';
@@ -285,8 +285,8 @@ function loadShiftHistory() {
         editBtn.className = 'shift-btn';
         editBtn.onclick = function() {
             document.getElementById('date').value = entry.date;
-            document.getElementById('shift').value = entry.shift;
-            document.getElementById('workstation').value = entry.workstation;
+            setShiftValue(entry.shift);
+            setWorkstationValue(entry.workstation);
             document.getElementById('extraStartTime').value = entry.extraStartTime || '';
             document.getElementById('extraStopTime').value = entry.extraStopTime || '';
             document.getElementById('extraHours').value = entry.extraHours || '';
@@ -323,8 +323,8 @@ const shiftForm = document.getElementById('shiftForm');
 shiftForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('date').value;
-    const shift = document.getElementById('shift').value;
-    const workstation = document.getElementById('workstation').value;
+    const shift = getShiftValue();
+    const workstation = getWorkstationValue();
     const extraHours = document.getElementById('extraHours').value;
     const coveredFor = document.getElementById('coveredFor').value;
     if (!date || !shift || !workstation) return;
@@ -563,4 +563,34 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('service-worker.js');
   });
+}
+
+// Helper to get/set shift radio value
+function getShiftValue() {
+    const radios = document.getElementsByName('shift');
+    for (const radio of radios) {
+        if (radio.checked) return radio.value;
+    }
+    return '';
+}
+function setShiftValue(val) {
+    const radios = document.getElementsByName('shift');
+    for (const radio of radios) {
+        radio.checked = (radio.value === val);
+    }
+}
+
+// Helper to get/set workstation radio value
+function getWorkstationValue() {
+    const radios = document.getElementsByName('workstation');
+    for (const radio of radios) {
+        if (radio.checked) return radio.value;
+    }
+    return '';
+}
+function setWorkstationValue(val) {
+    const radios = document.getElementsByName('workstation');
+    for (const radio of radios) {
+        radio.checked = (radio.value === val);
+    }
 } 
