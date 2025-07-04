@@ -348,6 +348,7 @@ shiftForm.addEventListener('submit', function(e) {
         history.unshift({ date, shift, workstation, extraStartTime: extraStartTimeVal, extraStopTime: extraStopTimeVal, extraHours, coveredFor });
     }
     localStorage.setItem('shiftHistory', JSON.stringify(history));
+    populateMonthYearSelectors(history);
     loadShiftHistory();
     shiftForm.reset();
 });
@@ -502,6 +503,7 @@ function importFromXLSX(file) {
             salary: row.Salary || undefined
         })).filter(row => row.date && row.shift && row.workstation);
         localStorage.setItem('shiftHistory', JSON.stringify(shiftHistory));
+        populateMonthYearSelectors(shiftHistory);
         loadShiftHistory();
         alert('Shift data imported!');
     };
