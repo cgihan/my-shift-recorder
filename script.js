@@ -1,12 +1,3 @@
-// Populate workstation dropdown
-const workstationSelect = document.getElementById('workstation');
-for (let i = 1; i <= 10; i++) {
-    const option = document.createElement('option');
-    option.value = i;
-    option.textContent = `Workstation ${i}`;
-    workstationSelect.appendChild(option);
-}
-
 // Month/year selector logic
 const monthSelect = document.getElementById('monthSelect');
 const yearSelect = document.getElementById('yearSelect');
