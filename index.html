@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>My Shift Recorder</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
@@ -15,19 +15,8 @@
             <label for="date">Date:</label>
             <input type="date" id="date" name="date" required>
 
-            <label for="shift">Shift:</label>
-            <div id="shiftRadios" style="display: flex; gap: 12px; margin-bottom: 8px;">
-                <label><input type="radio" name="shift" value="Morning" required> Morning</label>
-                <label><input type="radio" name="shift" value="Evening"> Evening</label>
-                <label><input type="radio" name="shift" value="Night"> Night</label>
-            </div>
-            <div style="font-size:0.95em;color:#555;margin-bottom:8px;">
-                Morning: 6AM, Evening: 2PM, Night: 10PM<br>
-                First shift per day: 2300, additional shifts: 225/hour (8 hours per shift)
-            </div>
-
             <label for="workstation">Workstation:</label>
-            <div id="workstationRadios" style="display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px;">
+            <div id="workstationRadios" class="workstation-radios">
                 <label><input type="radio" name="workstation" value="1" required> 1</label>
                 <label><input type="radio" name="workstation" value="2"> 2</label>
                 <label><input type="radio" name="workstation" value="3"> 3</label>
@@ -38,7 +27,18 @@
                 <label><input type="radio" name="workstation" value="8"> 8</label>
                 <label><input type="radio" name="workstation" value="9"> 9</label>
                 <label><input type="radio" name="workstation" value="10"> 10</label>
+                <label><input type="radio" name="workstation" value="11"> 11</label>
+                <label><input type="radio" name="workstation" value="12"> 12</label>
             </div>
+
+            <label for="shift">Shift:</label>
+            <div id="shiftRadios" class="shift-radios">
+                <label><input type="radio" name="shift" value="Morning" required> <span class="shift-caption" data-shift="Morning">Morning</span></label>
+                <label id="shiftEveningLabel"><input type="radio" name="shift" value="Evening"> <span class="shift-caption" data-shift="Evening">Evening</span></label>
+                <label id="shiftNightLabel"><input type="radio" name="shift" value="Night"> <span class="shift-caption" data-shift="Night">Night</span></label>
+            </div>
+            <div id="workstationScheduleHint" class="schedule-hint" aria-live="polite"></div>
+            <p class="schedule-hint-pay" hidden aria-hidden="true">First shift per day: Rs 2300. Additional shifts same day: each shift’s scheduled hours × Rs 225 (varies by workstation and shift).</p>
 
             <label for="extraStartTime">Extra Hours Start Time (optional):</label>
             <input type="time" id="extraStartTime" name="extraStartTime" step="60">
@@ -57,16 +57,16 @@
         <h2>Future Shifts</h2>
         <ul id="futureShifts"></ul>
         <h2>Shift History</h2>
-        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+        <div class="month-year-toolbar">
             <label for="monthSelect">Month:</label>
-            <select id="monthSelect"></select>
+            <select id="monthSelect" class="month-year-select"></select>
             <label for="yearSelect">Year:</label>
-            <select id="yearSelect"></select>
+            <select id="yearSelect" class="month-year-select"></select>
         </div>
-        <div id="shiftCount" style="margin-bottom: 10px; font-weight: bold;"></div>
-        <div id="monthlySalary" style="margin-bottom: 10px; font-weight: bold;"></div>
-        <button id="exportXLSX" style="margin-bottom: 10px; width: 100%;">Export as Excel (XLSX)</button>
-        <button id="importXLSX" style="margin-bottom: 10px; width: 100%;">Import Excel (XLSX)</button>
+        <div id="shiftCount" class="stat-line"></div>
+        <div id="coveredShiftHours" class="stat-line"></div>
+        <button type="button" id="exportXLSX" class="btn-block">Export as Excel (XLSX)</button>
+        <button type="button" id="importXLSX" class="btn-block">Import Excel (XLSX)</button>
         <input type="file" id="importFile" accept=".xlsx" style="display:none;" />
         <input type="date" id="moveToFutureDate" style="display:none;" />
         <ul id="shiftHistory"></ul>

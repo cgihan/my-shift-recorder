@@ -148,19 +148,25 @@ function loadShiftHistory() {
         li.appendChild(actions);
         historyList.appendChild(li);
     });
+    const validShifts = ['Morning', 'Evening', 'Night', 'NightLong'];
     // Display covered shift count (only count entries with valid shift type and no extra hours)
-    const validShifts = ['Morning', 'Evening', 'Night'];
-    const coveredShiftsCount = filteredHistory.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0)).length;
+    const coveredEntries = filteredHistory.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0));
+    const coveredShiftsCount = coveredEntries.length;
+    const coveredShiftHoursSum = coveredEntries.reduce((sum, entry) => sum + getShiftPaidHours(entry.workstation, entry.shift, entry.date), 0);
     const shiftCountDiv = document.getElementById('shiftCount');
     shiftCountDiv.textContent = `Total Covered Shifts: ${coveredShiftsCount}`;
+    const coveredShiftHoursDiv = document.getElementById('coveredShiftHours');
+    if (coveredShiftHoursDiv) {
+        coveredShiftHoursDiv.textContent = `Total Covered Shift Hours: ${coveredShiftHoursSum} hrs`;
+    }
 
     // Display total working days (unique dates with at least one covered shift)
-    const workingDays = new Set(filteredHistory.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0)).map(entry => entry.date));
+    const workingDays = new Set(coveredEntries.map(entry => entry.date));
     let workingDaysDiv = document.getElementById('workingDays');
     if (!workingDaysDiv) {
         workingDaysDiv = document.createElement('div');
         workingDaysDiv.id = 'workingDays';
-        shiftCountDiv.insertAdjacentElement('afterend', workingDaysDiv);
+        (coveredShiftHoursDiv || shiftCountDiv).insertAdjacentElement('afterend', workingDaysDiv);
     }
     workingDaysDiv.style.marginBottom = '10px';
     workingDaysDiv.style.fontWeight = 'bold';
@@ -184,46 +190,6 @@ function loadShiftHistory() {
     totalExtraHoursDiv.style.marginBottom = '10px';
     totalExtraHoursDiv.style.fontWeight = 'bold';
     totalExtraHoursDiv.textContent = `Total Extra Hours: ${totalExtraHours}`;
-
-    // Display total extra hours salary
-    let totalExtraHoursSalaryDiv = document.getElementById('totalExtraHoursSalary');
-    if (!totalExtraHoursSalaryDiv) {
-        totalExtraHoursSalaryDiv = document.createElement('div');
-        totalExtraHoursSalaryDiv.id = 'totalExtraHoursSalary';
-        totalExtraHoursDiv.insertAdjacentElement('afterend', totalExtraHoursSalaryDiv);
-    }
-    totalExtraHoursSalaryDiv.style.marginBottom = '10px';
-    totalExtraHoursSalaryDiv.style.fontWeight = 'bold';
-    totalExtraHoursSalaryDiv.textContent = `Total Extra Hours Salary: Rs ${(totalExtraHours * 225).toLocaleString()}`;
-
-    // Calculate and display monthly salary (new rule)
-    // Use selectedMonth and selectedYear from dropdowns
-    // Group shifts by date for selected month/year
-    const monthlyShifts = filteredHistory.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() === selectedMonth && entryDate.getFullYear() === selectedYear;
-    });
-    // Map: date string -> array of shifts
-    const shiftsByDay = {};
-    monthlyShifts.forEach(entry => {
-        if (!shiftsByDay[entry.date]) shiftsByDay[entry.date] = [];
-        shiftsByDay[entry.date].push(entry);
-    });
-    let monthlySalary = 0;
-    Object.values(shiftsByDay).forEach(shifts => {
-        // Only count shifts with no extra hours as full shifts
-        const fullShifts = shifts.filter(entry => !entry.extraHours || parseFloat(entry.extraHours) === 0);
-        if (fullShifts.length > 0) {
-            monthlySalary += 2300; // First shift
-            if (fullShifts.length > 1) {
-                monthlySalary += (fullShifts.length - 1) * 8 * 225; // Additional full shifts at 8x225
-            }
-        }
-    });
-    const totalExtraHoursForMonth = monthlyShifts.reduce((sum, entry) => sum + (entry.extraHours && !isNaN(parseFloat(entry.extraHours)) ? parseFloat(entry.extraHours) : 0), 0);
-    monthlySalary += totalExtraHoursForMonth * 225;
-    const monthlySalaryDiv = document.getElementById('monthlySalary');
-    monthlySalaryDiv.textContent = `Monthly Salary: Rs ${monthlySalary.toLocaleString()}`;
 
     // Display future shifts
     const futureShifts = history
@@ -372,7 +338,7 @@ function exportToXLSX() {
         return entryDate.getMonth() === selectedMonthIdx && entryDate.getFullYear() === selectedYearVal;
     });
     // Prepare data for Excel (sort by date ascending, then shift time)
-    const shiftOrder = { 'Morning': 1, 'Evening': 2, 'Night': 3 };
+    const shiftOrder = { 'Morning': 1, 'Evening': 2, 'Night': 3, 'NightLong': 4 };
     const sortedHistory = [...filteredExport].sort((a, b) => {
         const dateDiff = new Date(a.date) - new Date(b.date);
         if (dateDiff !== 0) return dateDiff;
@@ -393,7 +359,7 @@ function exportToXLSX() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    const validShifts = ['Morning', 'Evening', 'Night'];
+    const validShifts = ['Morning', 'Evening', 'Night', 'NightLong'];
 
     // Filter for current month
     const monthlyShifts = history.filter(entry => {
@@ -411,13 +377,11 @@ function exportToXLSX() {
     // Calculate salary
     let monthlySalary = 0;
     Object.values(shiftsByDay).forEach(shifts => {
-        // Only count shifts with no extra hours as full shifts
-        const fullShifts = shifts.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0));
+        const fullShiftsRaw = shifts.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0));
+        const fullShifts = sortShiftEntriesForPay(fullShiftsRaw);
         if (fullShifts.length > 0) {
-            monthlySalary += 2300; // First shift
-            if (fullShifts.length > 1) {
-                monthlySalary += (fullShifts.length - 1) * 8 * 225; // Additional full shifts at 8x225
-            }
+            monthlySalary += 2300;
+            monthlySalary += additionalFullShiftHoursPay(fullShifts);
         }
     });
     // Only add extra hours at 225/hour (do not count as full shifts)
@@ -438,13 +402,11 @@ function exportToXLSX() {
         exportShiftsByDay[entry.date].push(entry);
     });
     Object.values(exportShiftsByDay).forEach(shifts => {
-        // Only count shifts with no extra hours as full shifts
-        const fullShifts = shifts.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0));
+        const fullShiftsRaw = shifts.filter(entry => validShifts.includes(entry.shift) && (!entry.extraHours || parseFloat(entry.extraHours) === 0));
+        const fullShifts = sortShiftEntriesForPay(fullShiftsRaw);
         if (fullShifts.length > 0) {
-            exportMonthlySalary += 2300; // First shift
-            if (fullShifts.length > 1) {
-                exportMonthlySalary += (fullShifts.length - 1) * 8 * 225; // Additional full shifts at 8x225
-            }
+            exportMonthlySalary += 2300;
+            exportMonthlySalary += additionalFullShiftHoursPay(fullShifts);
         }
     });
     const exportTotalExtraHours = filteredExport.reduce((sum, entry) => sum + (entry.extraHours && !isNaN(parseFloat(entry.extraHours)) ? parseFloat(entry.extraHours) : 0), 0);
@@ -586,4 +548,276 @@ function setWorkstationValue(val) {
     for (const radio of radios) {
         radio.checked = (radio.value === val);
     }
-} 
+    updateShiftRadioLabels();
+}
+
+function parseLocalYMD(ymd) {
+    const p = ymd.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+}
+
+/** Paid hours per scheduled shift (must match workstation schedule). Used for additional shifts: hours × 225. */
+function getShiftPaidHours(workstation, shift, ymd) {
+    if (!ymd || !shift) return 0;
+    const ws = String(workstation);
+    const d = parseLocalYMD(ymd);
+    const friSat = d.getDay() === 5 || d.getDay() === 6;
+
+    if (shift === 'NightLong') {
+        if (ws === '6' && friSat) return 10;
+        return 0;
+    }
+
+    switch (ws) {
+        case '1':
+        case '8':
+            if (shift === 'Morning') return 7;
+            if (shift === 'Evening') return 6;
+            if (shift === 'Night') return 6;
+            return 0;
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+            if (shift === 'Morning' || shift === 'Evening' || shift === 'Night') return 8;
+            return 0;
+        case '6':
+            if (shift === 'Morning') return 6;
+            if (friSat) {
+                if (shift === 'Evening') return 10;
+                if (shift === 'Night') return 9;
+            } else {
+                if (shift === 'Evening') return 5;
+                if (shift === 'Night') return 9;
+            }
+            return 0;
+        case '7':
+        case '10':
+            if (shift === 'Morning') return 9;
+            if (shift === 'Night') return 9;
+            return 0;
+        case '9':
+            if (shift === 'Morning') return 8;
+            if (shift === 'Evening') return 6;
+            if (shift === 'Night') return 6;
+            return 0;
+        case '11':
+            if (shift === 'Morning') return 6;
+            if (shift === 'Night') return 10;
+            return 0;
+        case '12':
+            if (shift === 'Morning' || shift === 'Evening' || shift === 'Night') return 6;
+            return 0;
+        default:
+            return 0;
+    }
+}
+
+function sortShiftEntriesForPay(entries) {
+    const shiftOrder = { Morning: 1, Evening: 2, Night: 3, NightLong: 4 };
+    return [...entries].sort((a, b) => {
+        const oa = shiftOrder[a.shift] || 99;
+        const ob = shiftOrder[b.shift] || 99;
+        if (oa !== ob) return oa - ob;
+        return String(a.workstation).localeCompare(String(b.workstation), undefined, { numeric: true });
+    });
+}
+
+function additionalFullShiftHoursPay(sortedFullShifts) {
+    let sum = 0;
+    for (let i = 1; i < sortedFullShifts.length; i++) {
+        sum += getShiftPaidHours(sortedFullShifts[i].workstation, sortedFullShifts[i].shift, sortedFullShifts[i].date) * 225;
+    }
+    return sum;
+}
+
+/** Plain-text captions for shift radios and schedule lines (values still Morning/Evening/Night). */
+function getShiftCaptionsForWorkstation(workstation, ymd) {
+    const ws = String(workstation);
+    const d = parseLocalYMD(ymd);
+    const friSat = d.getDay() === 5 || d.getDay() === 6;
+
+    switch (ws) {
+        case '1':
+        case '8':
+            return {
+                Morning: '5:30 AM – 12:30 PM (7 hrs)',
+                Evening: '5:30 PM – 11:30 PM (6 hrs)',
+                Night: '11:30 PM – 5:30 AM (6 hrs)'
+            };
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+            return {
+                Morning: '5:30 AM – 1:30 PM (8 hrs)',
+                Evening: '1:30 PM – 9:30 PM (8 hrs)',
+                Night: '9:30 PM – 5:30 AM (8 hrs)'
+            };
+        case '6':
+            if (friSat) {
+                return {
+                    Morning: '5:30 AM – 11:30 AM (6 hrs)',
+                    Evening: '7:30 PM – 5:30 AM (10 hrs, Fri–Sat) (evening)',
+                    Night: '— (Sun–Thu: 12:30 AM – 9:30 AM, 9 hrs)'
+                };
+            }
+            return {
+                Morning: '5:30 AM – 11:30 AM (6 hrs)',
+                Evening: '7:30 PM – 12:30 AM (5 hrs, Sun–Thu) (evening)',
+                Night: '12:30 AM – 9:30 AM (9 hrs, Sun–Thu)'
+            };
+        case '7':
+        case '10':
+            return {
+                Morning: '5:30 AM – 2:30 PM (9 hrs)',
+                Night: '8:30 PM – 5:30 AM (9 hrs)'
+            };
+        case '9':
+            return {
+                Morning: '5:30 AM – 1:30 PM (8 hrs)',
+                Evening: '5:30 PM – 11:30 PM (6 hrs)',
+                Night: '11:30 PM – 5:30 AM (6 hrs)'
+            };
+        case '11':
+            return {
+                Morning: '5:30 AM – 11:30 AM (6 hrs)',
+                Night: '11:30 PM – 9:30 AM (10 hrs)'
+            };
+        case '12':
+            return {
+                Morning: '5:30 AM – 11:30 AM (6 hrs)',
+                Evening: '5:30 PM – 11:30 PM (6 hrs)',
+                Night: '11:30 PM – 5:30 AM (6 hrs)'
+            };
+        default:
+            return null;
+    }
+}
+
+/** Returns [{ shift, line }] for the hint panel */
+function getWorkstationScheduleLines(workstation, ymd) {
+    const c = getShiftCaptionsForWorkstation(workstation, ymd);
+    if (!c) return [];
+    const ws = String(workstation);
+    const d = parseLocalYMD(ymd);
+    const friSat = d.getDay() === 5 || d.getDay() === 6;
+    const em = '<strong>Morning:</strong> ';
+    const ee = '<strong>Evening:</strong> ';
+    const en = '<strong>Night:</strong> ';
+    const rows = [{ shift: 'Morning', line: em + c.Morning }];
+    if (c.Evening !== undefined) {
+        rows.push({ shift: 'Evening', line: ee + c.Evening });
+    }
+    if (ws === '6' && friSat) {
+        rows.push({ shift: 'Night', line: '<strong>Night (Sun–Thu only):</strong> 12:30 AM – 9:30 AM (9 hrs, Sun–Thu)' });
+    } else {
+        rows.push({ shift: 'Night', line: en + c.Night });
+    }
+    return rows;
+}
+
+const SHIFT_LABELS_DEFAULT = { Morning: 'Morning', Evening: 'Evening', Night: 'Night' };
+
+function preferNightShiftRadio() {
+    const nightRadio = document.querySelector('#shiftRadios input[name="shift"][value="Night"]');
+    if (nightRadio) nightRadio.checked = true;
+}
+
+function preferEveningShiftRadio() {
+    const eveningRadio = document.querySelector('#shiftRadios input[name="shift"][value="Evening"]');
+    if (eveningRadio) eveningRadio.checked = true;
+}
+
+function updateShiftOptionsVisibility() {
+    const eveningLabel = document.getElementById('shiftEveningLabel');
+    const nightLabel = document.getElementById('shiftNightLabel');
+    const ws = getWorkstationValue();
+    const dateEl = document.getElementById('date');
+    const ymd = (dateEl && dateEl.value) ? dateEl.value : new Date().toISOString().slice(0, 10);
+    const d = parseLocalYMD(ymd);
+    const friSat = d.getDay() === 5 || d.getDay() === 6;
+
+    if (eveningLabel) {
+        const hideEvening = ws === '7' || ws === '10' || ws === '11';
+        eveningLabel.style.display = hideEvening ? 'none' : '';
+        if (hideEvening) {
+            const er = eveningLabel.querySelector('input[name="shift"][value="Evening"]');
+            if (er && er.checked) {
+                er.checked = false;
+                preferNightShiftRadio();
+            }
+        }
+    }
+
+    if (nightLabel) {
+        const hideNight = ws === '6' && friSat;
+        nightLabel.style.display = hideNight ? 'none' : '';
+        if (hideNight) {
+            const nr = nightLabel.querySelector('input[name="shift"][value="Night"]');
+            if (nr && nr.checked) {
+                nr.checked = false;
+                preferEveningShiftRadio();
+            }
+        }
+    }
+}
+
+function updateShiftRadioLabels() {
+    const root = document.getElementById('shiftRadios');
+    if (!root) return;
+    const ws = getWorkstationValue();
+    const dateEl = document.getElementById('date');
+    const ymd = (dateEl && dateEl.value) ? dateEl.value : new Date().toISOString().slice(0, 10);
+    const captions = ws ? getShiftCaptionsForWorkstation(ws, ymd) : null;
+    const map = captions || SHIFT_LABELS_DEFAULT;
+    root.querySelectorAll('.shift-caption[data-shift]').forEach(span => {
+        const key = span.getAttribute('data-shift');
+        if (map[key] !== undefined) span.textContent = map[key];
+    });
+    updateShiftOptionsVisibility();
+}
+
+function updateWorkstationScheduleHint() {
+    const el = document.getElementById('workstationScheduleHint');
+    if (!el) return;
+    const ws = getWorkstationValue();
+    const dateEl = document.getElementById('date');
+    const ymd = (dateEl && dateEl.value) ? dateEl.value : new Date().toISOString().slice(0, 10);
+
+    if (!ws) {
+        el.innerHTML = '<p>Select a workstation to see shift times for the chosen date.</p>';
+        return;
+    }
+
+    const rows = getWorkstationScheduleLines(ws, ymd);
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayLabel = days[parseLocalYMD(ymd).getDay()];
+    let html = '<p><strong>Workstation ' + ws + '</strong> — ' + dayLabel + ' · ' + ymd + '</p><ul>';
+    rows.forEach(r => {
+        html += '<li>' + r.line + '</li>';
+    });
+    html += '</ul>';
+    if (String(ws) === '6') {
+        html += '<p class="ws6-note">Workstation 6: evening/night blocks differ on Fri–Sat vs Sun–Thu (uses the date above).</p>';
+    }
+    el.innerHTML = html;
+}
+
+(function wireWorkstationScheduleHint() {
+    const dateEl = document.getElementById('date');
+    if (dateEl) {
+        dateEl.addEventListener('change', function () {
+            updateShiftRadioLabels();
+            updateWorkstationScheduleHint();
+        });
+    }
+    document.querySelectorAll('input[name="workstation"]').forEach(r => {
+        r.addEventListener('change', function () {
+            updateShiftRadioLabels();
+            updateWorkstationScheduleHint();
+        });
+    });
+    updateShiftRadioLabels();
+    updateWorkstationScheduleHint();
+})();
